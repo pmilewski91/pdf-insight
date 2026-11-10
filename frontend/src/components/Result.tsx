@@ -1,16 +1,20 @@
 import { downloadJson } from "../lib/api";
 import type { AnalysisResult } from "../../../backend/lib/schema";
 
-type Props = { result: AnalysisResult };
+type Props = { result: AnalysisResult; fromHistory?: boolean };
 
-export default function Result({ result }: Props) {
+export default function Result({ result, fromHistory = false }: Props) {
   const { document, entities, amounts, dates } = result;
   return (
     <section className="result" aria-labelledby="result-title">
       <div className="result-heading">
         <div>
-          <p className="eyebrow">ANALIZA GOTOWA</p>
-          <h2 id="result-title">{document.title ?? document.fileName}</h2>
+          <p className="eyebrow">
+            {fromHistory ? "ZAPISANY WYNIK" : "ANALIZA GOTOWA"}
+          </p>
+          <h2 id="result-title" tabIndex={-1}>
+            {document.title ?? document.fileName}
+          </h2>
           <p className="muted">
             {document.fileName} · {document.pages} stron · {document.type} ·{" "}
             {document.language ?? "język nieznany"}

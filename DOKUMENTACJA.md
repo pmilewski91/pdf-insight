@@ -30,7 +30,7 @@ Przykładowy przebieg:
 3. Użytkownik widzi informację o przetwarzaniu przez Gemini i wyraża zgodę.
 4. Tekst, nazwa pliku i liczba stron są wysyłane do backendu.
 5. Backend przekazuje tekst do Gemini wraz z instrukcją analizy.
-6. Wynik jest walidowany, wyświetlany i może zostać pobrany.
+6. Wynik jest walidowany, wyświetlany i może zostać pobrany. Pięć ostatnich wyników zapisywanych jest automatycznie w historii przeglądarki.
 
 **Ważne:** oryginalny plik PDF nie jest wysyłany do backendu. Wysyłany jest **odczytany z niego tekst**, również ten rozpoznany przez opcjonalny OCR; tekst może zawierać dane poufne.
 
@@ -73,7 +73,7 @@ Backend działa jako pośrednik: odbiera żądanie z przeglądarki, korzysta z k
 8. **Kontrola backendu:** sprawdzane są m.in. origin, metoda, konfiguracja, rozmiar danych i schemat żądania.
 9. **Wywołanie Gemini:** backend sprawdza limit instancji i wysyła tekst oraz osobną instrukcję systemową do Google.
 10. **Kontrola odpowiedzi:** backend parsuje odpowiedź, zastępuje nazwę pliku i liczbę stron danymi z żądania oraz sprawdza wynik w Zod. Niepoprawny wynik może zostać pobrany jeszcze raz.
-11. **Widok i eksport:** frontend ponownie waliduje wynik, dodaje numery stron OCR i pominiętych stron, po czym wyświetla wynik. Przycisk tworzy plik JSON w przeglądarce.
+11. **Widok, historia i eksport:** frontend ponownie waliduje wynik, dodaje numery stron OCR i pominiętych stron, po czym wyświetla i zapisuje wynik w historii. Przycisk tworzy plik JSON w przeglądarce.
 
 ## 3. Struktura projektu
 
@@ -86,10 +86,12 @@ pdf-insight/
 │   │   ├── main.tsx              # uruchomienie aplikacji React
 │   │   ├── style.css             # wygląd, responsywność i fokus
 │   │   ├── components/Result.tsx # widok wyników
+│   │   ├── components/History.tsx # lista i usuwanie wyników
 │   │   └── lib/
 │   │       ├── fileValidation.ts # podstawowa walidacja pliku
 │   │       ├── pdf.ts            # odczyt PDF przez PDF.js
 │   │       ├── ocr.ts            # renderowanie strony i rozpoznawanie Tesseract.js
+│   │       ├── history.ts        # walidacja i zapis historii w localStorage
 │   │       ├── api.ts            # wywołanie backendu i eksport JSON
 │   │       └── pdf.test.ts       # testy walidacji pliku
 │   ├── vite.config.ts            # konfiguracja Vite i ścieżki GitHub Pages
@@ -129,6 +131,9 @@ Główna logika interfejsu znajduje się w [`frontend/src/App.tsx`](./frontend/s
 | `consent` | Stan checkboxa zgody |
 | `ocrEnabled` | Stan opcjonalnego checkboxa OCR, początkowo wyłączonego |
 | `dragging` | Informację, że użytkownik przeciąga plik nad obszarem wyboru |
+| `history` | Ostatnie zapisane wyniki |
+| `historyError` | Błąd odczytu, zapisu lub usuwania historii |
+| `shownHistoryId` | Identyfikator wyniku otwartego z historii |
 
 `useState` służy do przechowywania wartości, których zmiana ma odświeżyć widok. `useRef` przechowuje odwołanie do pola wyboru pliku oraz flagę `busyRef`, ograniczającą uruchomienie dwóch operacji jednocześnie, także zanim React zdąży ponownie wyrenderować komponent.
 
@@ -202,6 +207,12 @@ Eksport w [`api.ts`](./frontend/src/lib/api.ts) działa po stronie przeglądarki
 5. Link zostaje uruchomiony, a tymczasowy adres zwolniony.
 
 Podgląd i eksport korzystają z tego samego obiektu wyniku, łącznie z `analysis.missingPages` i `analysis.ocrPages`. React renderuje tekst jako tekst, bez `dangerouslySetInnerHTML`.
+
+### Historia analiz
+
+Po każdej udanej analizie frontend automatycznie zapisuje wynik, jego identyfikator i czas w `localStorage` pod kluczem `pdf-insight:history:v1`. Ostatni wynik jest pierwszy; zapis szóstego usuwa najstarszy. Przy wczytywaniu aplikacja sprawdza wersję i każdy wynik za pomocą wspólnego schematu Zod. Nieprawidłowa historia nie jest automatycznie nadpisywana: pojawia się błąd i możliwość jej usunięcia. Błąd zapisu, np. z powodu limitu pamięci, nie usuwa wyniku z widoku i jest zgłaszany użytkownikowi. Zmiany historii w innej karcie tego samego originu są odświeżane przez zdarzenie `storage`.
+
+Historia działa w konkretnym profilu przeglądarki i na konkretnym originie; nie jest kontem ani synchronizacją między urządzeniami. Nie przechowuje oryginalnego PDF-a ani pełnego tekstu wejściowego, ale pełny wynik AI, nazwa pliku i jego fragmenty mogą zawierać dane wrażliwe. `localStorage` nie szyfruje danych przed innymi osobami mającymi dostęp do profilu. Użytkownik może otworzyć lub usunąć pojedynczy wynik albo po potwierdzeniu wyczyścić całą historię. Czyszczenie danych przeglądarki, tryb prywatny lub ograniczenia pamięci mogą spowodować utratę historii.
 
 ### 4.6. Wygląd i dostępność
 
@@ -508,6 +519,7 @@ npm run build --prefix backend && npm run build --prefix frontend
 - [`frontend/src/lib/pdf.test.ts`](./frontend/src/lib/pdf.test.ts) — nie-PDF, pusty plik, przekroczenie 10 MiB i nieprawidłowy podpis.
 - [`frontend/src/lib/extractPdf.test.ts`](./frontend/src/lib/extractPdf.test.ts) — odczyt stron z symulowanym OCR, brak tekstu, kolejność i błędy.
 - [`frontend/src/lib/ocr.test.ts`](./frontend/src/lib/ocr.test.ts) — podstawowa kontrola odpowiedzi z modelami OCR, w tym odpowiedzi HTML zamiast modelu.
+- [`frontend/src/lib/history.test.ts`](./frontend/src/lib/history.test.ts) — limit pięciu wyników, odczyt, usuwanie, błędne dane i błędy pamięci.
 - [`backend/tests/schema.test.ts`](./backend/tests/schema.test.ts) — m.in. poprawny wynik, brak pola, niepoprawne kody i daty, typ kwoty oraz liczba zdań i punktów.
 - [`backend/tests/limits.test.ts`](./backend/tests/limits.test.ts) — limit minutowy i dobowy pojedynczej instancji z użyciem symulowanego czasu.
 - [`backend/tests/api.test.ts`](./backend/tests/api.test.ts) — m.in. CORS, brak konfiguracji, błędne żądanie, ponowienie niepoprawnej odpowiedzi i obsługa błędów dostawcy.
@@ -529,10 +541,10 @@ Testy backendu zastępują odpowiedzi Gemini i część zależności **mockami**
 |---|---|
 | OCR tylko dla stron bez tekstu i z ograniczoną dokładnością | Lepsze wykrywanie stron mieszanych i ocena jakości rozpoznawania |
 | Brak dzielenia długich dokumentów | Dzielenie tekstu z zachowaniem stron, analiza fragmentów i kontrolowane łączenie wyników |
-| Brak historii | Opcjonalna historia w przeglądarce z informacją o prywatności i możliwością usunięcia |
+| Historia jest ograniczona do pięciu wyników w jednym profilu przeglądarki | Ewentualna synchronizacja tylko po osobnej decyzji o prywatności i infrastrukturze |
 | Limit tylko w pamięci instancji | Współdzielony licznik, ochrona przed nadużyciem i kontrola budżetu; wymaga osobnej decyzji o usłudze i kosztach 
 
-Historia i dzielenie dokumentu **nie są obecnie zaimplementowane**. Strona 11 dołączonego dokumentu testowego nie ma warstwy tekstowej. Bez OCR aplikacja ostrzega o jej pominięciu; po OCR nadal trzeba sprawdzić treść aneksu z oryginałem i ocenić jego wpływ na pozostałe warunki.
+Dzielenie dokumentu **nie jest obecnie zaimplementowane**. Strona 11 dołączonego dokumentu testowego nie ma warstwy tekstowej. Bez OCR aplikacja ostrzega o jej pominięciu; po OCR nadal trzeba sprawdzić treść aneksu z oryginałem i ocenić jego wpływ na pozostałe warunki.
 
 ## 12. Jak opowiedzieć o projekcie
 

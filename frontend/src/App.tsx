@@ -1,8 +1,23 @@
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
+import History from "./components/History";
 import Result from "./components/Result";
 import { analyzePdf } from "./lib/api";
 import { extractPdf, type ExtractedPdf } from "./lib/pdf";
 import { resultSchema, type AnalysisResult } from "../../backend/lib/schema";
+import {
+  clearHistory,
+  deleteHistoryEntry,
+  HISTORY_KEY,
+  readHistory,
+  saveHistory,
+  type HistoryEntry,
+} from "./lib/history";
 
 export default function App() {
   const [pdf, setPdf] = useState<ExtractedPdf | null>(null);
@@ -12,9 +27,40 @@ export default function App() {
   const [consent, setConsent] = useState(false);
   const [ocrEnabled, setOcrEnabled] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyError, setHistoryError] = useState("");
+  const [shownHistoryId, setShownHistoryId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
   const busyRef = useRef(false);
+
+  useEffect(() => {
+    function refreshHistory() {
+      try {
+        setHistory(readHistory(window.localStorage));
+        setHistoryError("");
+      } catch {
+        setHistory([]);
+        setHistoryError(
+          "Nie można odczytać historii. Dane mogą być uszkodzone lub pamięć przeglądarki niedostępna. Możesz spróbować usunąć historię.",
+        );
+      }
+    }
+    refreshHistory();
+    function onStorage(event: StorageEvent) {
+      if (event.key === HISTORY_KEY || event.key === null) refreshHistory();
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (shownHistoryId !== null) {
+      const heading = document.getElementById("result-title");
+      heading?.scrollIntoView({ block: "start" });
+      heading?.focus({ preventScroll: true });
+    }
+  }, [shownHistoryId]);
 
   async function selectFile(file: File | undefined, useOcr = ocrEnabled) {
     if (!file || busyRef.current) return;
@@ -22,6 +68,7 @@ export default function App() {
     fileRef.current = file;
     setPdf(null);
     setResult(null);
+    setShownHistoryId(null);
     setError("");
     setConsent(false);
     setBusy("Odczytujemy dokument…");
@@ -58,12 +105,20 @@ export default function App() {
     setResult(null);
     try {
       const data = await analyzePdf(pdf);
-      setResult(
-        resultSchema.parse({
-          ...data,
-          analysis: { missingPages: pdf.missingPages, ocrPages: pdf.ocrPages },
-        }),
-      );
+      const parsed = resultSchema.parse({
+        ...data,
+        analysis: { missingPages: pdf.missingPages, ocrPages: pdf.ocrPages },
+      });
+      setResult(parsed);
+      setShownHistoryId(null);
+      try {
+        setHistory(saveHistory(window.localStorage, parsed));
+        setHistoryError("");
+      } catch {
+        setHistoryError(
+          "Analiza jest gotowa, ale nie udało się jej zapisać w historii. Pamięć może być niedostępna, pełna lub historia uszkodzona.",
+        );
+      }
     } catch (issue) {
       setError(
         issue instanceof Error
@@ -73,6 +128,35 @@ export default function App() {
     } finally {
       busyRef.current = false;
       setBusy("");
+    }
+  }
+
+  function removeEntry(id: string) {
+    try {
+      setHistory(deleteHistoryEntry(window.localStorage, id));
+      setHistoryError("");
+      if (shownHistoryId === id) {
+        setResult(null);
+        setShownHistoryId(null);
+      }
+    } catch {
+      setHistoryError("Nie udało się usunąć wpisu z historii.");
+    }
+  }
+
+  function removeAllHistory() {
+    if (!window.confirm("Usunąć wszystkie zapisane wyniki z tej przeglądarki?"))
+      return;
+    try {
+      clearHistory(window.localStorage);
+      setHistory([]);
+      setHistoryError("");
+      if (shownHistoryId !== null) {
+        setResult(null);
+        setShownHistoryId(null);
+      }
+    } catch {
+      setHistoryError("Nie udało się usunąć historii z przeglądarki.");
     }
   }
 
@@ -176,7 +260,8 @@ export default function App() {
               W darmowym planie Google może wykorzystywać treść do ulepszania
               swoich produktów. Nie wysyłaj dokumentów poufnych ani danych
               osobowych bez odpowiedniej zgody. Warunki Google i Vercel mogą się
-              zmieniać.
+              zmieniać. Wynik analizy zostanie automatycznie zapisany w historii
+              tej przeglądarki.
             </div>
             <label className="consent">
               <input
@@ -218,7 +303,7 @@ export default function App() {
         )}
       </section>
       {result ? (
-        <Result result={result} />
+        <Result result={result} fromHistory={shownHistoryId !== null} />
       ) : (
         <section className="features" aria-label="Jak to działa">
           <div>
@@ -238,6 +323,18 @@ export default function App() {
           </div>
         </section>
       )}
+      <History
+        entries={history}
+        error={historyError}
+        busy={!!busy}
+        onOpen={(entry) => {
+          setError("");
+          setResult(entry.result);
+          setShownHistoryId(entry.id);
+        }}
+        onDelete={removeEntry}
+        onClear={removeAllHistory}
+      />
       <footer>
         PDF Insight <span>·</span> Czytaj mniej, rozumiej więcej.
       </footer>

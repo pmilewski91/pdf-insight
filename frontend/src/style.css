@@ -362,6 +362,74 @@ input:focus-visible,
 .result > .small {
   margin-top: 20px;
 }
+.history {
+  max-width: 800px;
+  margin: 40px auto 64px;
+  padding: 24px;
+}
+.history-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+.history h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+.history-heading p {
+  color: #64738a;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.history button {
+  border: 1px solid #c9d5eb;
+  border-radius: 8px;
+  background: white;
+  color: #3159c7;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.history-clear {
+  white-space: nowrap;
+}
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-list li {
+  border-top: 1px solid #e4e9f2;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.history-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.history-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 footer {
   text-align: center;
   border-top: 1px solid #e3e8f1;
@@ -402,6 +470,15 @@ footer span {
   }
   .result .card {
     padding: 20px;
+  }
+  .history-heading,
+  .history-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .history-heading {
+    gap: 0;
+    margin-bottom: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
