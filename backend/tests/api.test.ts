@@ -103,4 +103,19 @@ describe("analysis endpoint", () => {
     expect(response.status).toBe(429);
     expect((await response.json()).error).toContain("Gemini");
   });
+  it("reports the provider status without exposing the response body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response("private provider details", { status: 503 }),
+        ),
+    );
+    const response = await handler.fetch(request(input));
+    const body = await response.json();
+    expect(response.status).toBe(502);
+    expect(body.error).toContain("HTTP 503");
+    expect(body.error).not.toContain("private provider details");
+  });
 });

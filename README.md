@@ -2,7 +2,8 @@
 
 Aplikacja do podsumowania PDF i eksportu danych do JSON. Interfejs: React, TypeScript, Vite i PDF.js. Analizę wykonuje Gemini przez Vercel Function; klucz nie trafia do przeglądarki.
 
-**Demo:** https://pmilewski91.github.io/pdf-insight/ — będzie dostępne po skonfigurowaniu i wdrożeniu opisanym poniżej. Adres API zostanie ustalony podczas wdrożenia Vercel.
+**Demo:** https://pmilewski91.github.io/pdf-insight/  
+**Backend:** https://pdf-insight-backend-tau.vercel.app/
 
 ![Ekran początkowy aplikacji](docs/screenshot.png)
 

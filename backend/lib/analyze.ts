@@ -81,7 +81,7 @@ export async function analyze(
     if (!response.ok)
       throw new AnalysisError(
         502,
-        "Gemini nie mogło wykonać analizy. Sprawdź konfigurację usługi.",
+        `Gemini zwróciło błąd HTTP ${response.status}. Spróbuj ponownie później lub skontaktuj się z administratorem.`,
       );
 
     let payload: unknown;
