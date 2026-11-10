@@ -19,6 +19,26 @@ export const validResult = {
 };
 
 describe("result schema", () => {
+  it("accepts old metadata and optional OCR page numbers", () => {
+    expect(
+      resultSchema.safeParse({
+        ...validResult,
+        analysis: { missingPages: [2] },
+      }).success,
+    ).toBe(true);
+    expect(
+      resultSchema.safeParse({
+        ...validResult,
+        analysis: { missingPages: [], ocrPages: [1] },
+      }).success,
+    ).toBe(true);
+    expect(
+      resultSchema.safeParse({
+        ...validResult,
+        analysis: { missingPages: [], ocrPages: [0] },
+      }).success,
+    ).toBe(false);
+  });
   it("accepts a complete result, empty arrays and nullable fields", () => {
     expect(resultSchema.safeParse(validResult).success).toBe(true);
     expect(

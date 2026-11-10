@@ -209,6 +209,9 @@ input:focus-visible,
 .consent input {
   margin-top: 3px;
 }
+.ocr-option {
+  margin: 18px 6px 6px;
+}
 .primary {
   background: #315dd8;
   border: 0;

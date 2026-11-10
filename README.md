@@ -2,6 +2,8 @@
 
 Aplikacja do podsumowania PDF i eksportu danych do JSON. Interfejs: React, TypeScript, Vite i PDF.js. Analizę wykonuje Gemini przez Vercel Function; klucz nie trafia do przeglądarki.
 
+Szczegółowy opis architektury, pakietów i przepływu: [Dokumentacja projektu](./DOKUMENTACJA.md).
+
 **Demo:** https://pmilewski91.github.io/pdf-insight/  
 **Backend:** https://pdf-insight-backend-tau.vercel.app/
 
@@ -9,8 +11,8 @@ Aplikacja do podsumowania PDF i eksportu danych do JSON. Interfejs: React, TypeS
 
 ## Jak to działa
 
-1. Przeglądarka sprawdza plik PDF (maks. 10 MB) i odczytuje tekst poszczególnych stron.
-2. Przed wysłaniem tekstu użytkownik otrzymuje informację o przetwarzaniu przez Gemini i wyraża zgodę. Strony bez tekstu są wyraźnie wskazywane; informacja o nich znajduje się też w `analysis.missingPages` w wyniku.
+1. Przeglądarka sprawdza plik PDF (maks. 10 MB) i odczytuje tekst poszczególnych stron. Opcjonalny checkbox OCR, domyślnie wyłączony, uruchamia lokalne rozpoznawanie skanów po polsku i angielsku.
+2. Przed wysłaniem tekstu użytkownik otrzymuje informację o przetwarzaniu przez Gemini i wyraża zgodę. Strony bez tekstu są wskazywane w `analysis.missingPages`, a strony odczytane przez OCR w `analysis.ocrPages`.
 3. Backend waliduje żądanie, sprawdza limit instancji i wysyła tekst do Gemini z osobną instrukcją systemową. Odpowiedź jest walidowana w Zod; niepoprawna odpowiedź jest ponawiana dokładnie raz.
 4. Przeglądarka ponownie waliduje dane, wyświetla je i pozwala pobrać ten sam wynik w JSON. Nazwę i liczbę stron określa aplikacja, nie model.
 
@@ -18,7 +20,8 @@ Kod nie zapisuje dokumentów ani wyników na serwerze. To nie jest gwarancja dot
 
 ## Ważne ograniczenia
 
-- Brak OCR: strona zawierająca jedynie obraz nie zostanie odczytana. Sama obecność niewielkiej ilości tekstu nie gwarantuje, że obrazy na stronie zostały odczytane.
+- OCR działa tylko na stronach, z których PDF.js nie odczytał żadnego tekstu. Nawet niewielka warstwa tekstowa może ukryć skan na tej samej stronie. OCR może błędnie rozpoznawać tekst, liczby i daty; pustych lub nieodczytanych stron nie analizujemy.
+- OCR wykonuje się w przeglądarce bez wysyłania obrazu do osobnej usługi OCR. Pliki kodu i modele językowe pobierane są z serwera hostującego frontend, który może widzieć adres IP. Rozpoznany tekst jest następnie wysyłany do Gemini po wyrażeniu zgody. Pierwsze uruchomienie może wymagać pobrania kilku megabajtów; OCR może być powolny i zużywać pamięć. Działanie offline nie jest gwarantowane.
 - Maksimum to 100 stron i 150 000 znaków tekstu. Dłuższy dokument zostaje odrzucony; dzielenie i historia nie zostały wdrożone.
 - Analiza AI może być niepoprawna, także mimo instrukcji chroniącej przed manipulacją w dokumencie. Istotne dane należy sprawdzić w oryginale. Czas poniżej 30 sekund nie jest gwarantowany.
 - Limit 5 wywołań Gemini na minutę i 40 na dobę dotyczy **każdej instancji funkcji osobno**. Reset instancji lub równoległe instancje go omijają. CORS nie jest uwierzytelnianiem. Odpowiedź 429 Gemini jest sygnalizowana w interfejsie. To **nie jest globalny limit ani zabezpieczenie budżetu**. Weryfikuj darmowy plan i brak aktywnych rozliczeń w Google; przy płatnym planie nie publikuj tego API bez skutecznego współdzielonego limitowania i ochrony kosztów. Jeśli limity dostawcy się wyczerpią, demo może przestać działać.

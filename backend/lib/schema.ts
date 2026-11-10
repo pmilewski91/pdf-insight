@@ -65,7 +65,10 @@ export const resultSchema = z
     dates: z.array(z.object({ date, context: text }).strict()).max(100),
     keywords: z.array(text).max(100),
     analysis: z
-      .object({ missingPages: z.array(z.number().int().positive()).max(100) })
+      .object({
+        missingPages: z.array(z.number().int().positive()).max(100),
+        ocrPages: z.array(z.number().int().positive()).max(100).optional(),
+      })
       .strict()
       .optional(),
   })

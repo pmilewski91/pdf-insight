@@ -11,11 +11,16 @@ export type ExtractedPdf = {
   pages: number;
   text: string;
   missingPages: number[];
+  ocrPages: number[];
 };
 
-export async function extractPdf(file: File): Promise<ExtractedPdf> {
+export async function extractPdf(
+  file: File,
+  options: { ocr?: boolean; onProgress?: (message: string) => void } = {},
+): Promise<ExtractedPdf> {
   const bytes = await validatePdfFile(file);
   let pdf: pdfjs.PDFDocumentProxy;
+  let ocr: Awaited<ReturnType<typeof import("./ocr").createOcr>> | undefined;
   try {
     pdf = await pdfjs.getDocument({ data: bytes }).promise;
   } catch (error) {
@@ -27,32 +32,74 @@ export async function extractPdf(file: File): Promise<ExtractedPdf> {
     if (pdf.numPages > MAX_PAGES)
       throw new Error("Dokument ma więcej niż 100 stron.");
     const missingPages: number[] = [];
+    const ocrPages: number[] = [];
     const pages: string[] = [];
     for (let number = 1; number <= pdf.numPages; number++) {
       const page = await pdf.getPage(number);
-      const content = await page.getTextContent();
-      const text = content.items
-        .map((item) =>
-          "str" in item ? item.str + (item.hasEOL ? "\n" : " ") : "",
-        )
-        .join("")
-        .trim();
-      if (!text) missingPages.push(number);
-      else pages.push(`--- Strona ${number} ---\n${text}`);
-      page.cleanup();
+      try {
+        const content = await page.getTextContent();
+        let text = content.items
+          .map((item) =>
+            "str" in item ? item.str + (item.hasEOL ? "\n" : " ") : "",
+          )
+          .join("")
+          .trim();
+        if (!text && options.ocr) {
+          if (!ocr) {
+            options.onProgress?.(
+              "Przygotowujemy OCR (pierwsze uruchomienie może potrwać)…",
+            );
+            try {
+              const { createOcr } = await import("./ocr");
+              ocr = await createOcr();
+            } catch {
+              throw new Error(
+                "Nie udało się uruchomić OCR. Sprawdź połączenie i spróbuj ponownie.",
+              );
+            }
+          }
+          options.onProgress?.(
+            `Rozpoznajemy tekst: strona ${number} z ${pdf.numPages}…`,
+          );
+          try {
+            text = await ocr.recognize(page);
+          } catch {
+            throw new Error(
+              `Nie udało się rozpoznać tekstu na stronie ${number}. Spróbuj ponownie lub wyłącz OCR.`,
+            );
+          }
+          if (text) ocrPages.push(number);
+        }
+        if (!text) missingPages.push(number);
+        else pages.push(`--- Strona ${number} ---\n${text}`);
+      } finally {
+        page.cleanup();
+      }
     }
     const text = pages.join("\n\n");
     if (!text || text.replace(/--- Strona \d+ ---/g, "").trim().length < 20) {
       throw new Error(
-        "PDF nie zawiera wystarczającej ilości tekstu. Skan wymaga OCR, które nie jest jeszcze dostępne.",
+        options.ocr
+          ? "PDF nie zawiera wystarczającej ilości tekstu, także po próbie OCR."
+          : "PDF nie zawiera wystarczającej ilości tekstu. Włącz OCR, aby spróbować odczytać skan.",
       );
     }
     if (text.length > MAX_TEXT_LENGTH)
       throw new Error(
         "Tekst przekracza limit 150 000 znaków. Podziel dokument na mniejsze części.",
       );
-    return { fileName: file.name, pages: pdf.numPages, text, missingPages };
+    return {
+      fileName: file.name,
+      pages: pdf.numPages,
+      text,
+      missingPages,
+      ocrPages,
+    };
   } finally {
-    await pdf.destroy();
+    try {
+      await ocr?.terminate();
+    } finally {
+      await pdf.destroy();
+    }
   }
 }

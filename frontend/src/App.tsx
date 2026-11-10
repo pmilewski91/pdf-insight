@@ -10,20 +10,23 @@ export default function App() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [consent, setConsent] = useState(false);
+  const [ocrEnabled, setOcrEnabled] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<File | null>(null);
   const busyRef = useRef(false);
 
-  async function selectFile(file: File | undefined) {
+  async function selectFile(file: File | undefined, useOcr = ocrEnabled) {
     if (!file || busyRef.current) return;
     busyRef.current = true;
+    fileRef.current = file;
     setPdf(null);
     setResult(null);
     setError("");
     setConsent(false);
     setBusy("Odczytujemy dokument…");
     try {
-      setPdf(await extractPdf(file));
+      setPdf(await extractPdf(file, { ocr: useOcr, onProgress: setBusy }));
     } catch (issue) {
       setError(
         issue instanceof Error
@@ -58,7 +61,7 @@ export default function App() {
       setResult(
         resultSchema.parse({
           ...data,
-          analysis: { missingPages: pdf.missingPages },
+          analysis: { missingPages: pdf.missingPages, ocrPages: pdf.ocrPages },
         }),
       );
     } catch (issue) {
@@ -123,6 +126,25 @@ export default function App() {
           </span>
           <small>Jeden plik PDF · maksymalnie 10 MB</small>
         </label>
+        <label className="consent ocr-option">
+          <input
+            type="checkbox"
+            checked={ocrEnabled}
+            disabled={!!busy}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              setOcrEnabled(enabled);
+              if (fileRef.current) void selectFile(fileRef.current, enabled);
+            }}
+          />
+          <span>
+            <strong>Włącz OCR dla stron bez tekstu</strong>
+            <br />
+            Rozpoznawanie skanów po polsku i angielsku w przeglądarce może
+            potrwać. Rozpoznany tekst zostanie wysłany do Gemini po wyrażeniu
+            zgody.
+          </span>
+        </label>
         {pdf && (
           <div className="selected">
             <div className="file-line">
@@ -137,8 +159,14 @@ export default function App() {
             {pdf.missingPages.length > 0 && (
               <div className="notice warning" role="status">
                 <strong>Niepełna analiza.</strong> Strony bez tekstu:{" "}
-                {pdf.missingPages.join(", ")}. OCR nie jest dostępny, więc ich
-                treść zostanie pominięta.
+                {pdf.missingPages.join(", ")}. Ich treść zostanie pominięta.
+                {!ocrEnabled && " Włącz OCR, aby spróbować odczytać skany."}
+              </div>
+            )}
+            {pdf.ocrPages.length > 0 && (
+              <div className="notice warning" role="status">
+                OCR odczytał strony: {pdf.ocrPages.join(", ")}. Rozpoznawanie
+                może zawierać błędy — sprawdź ważne informacje w oryginale.
               </div>
             )}
             <div className="notice privacy">
@@ -196,7 +224,7 @@ export default function App() {
           <div>
             <span>01</span>
             <strong>Wybierz dokument</strong>
-            <p>Dodaj PDF z warstwą tekstową.</p>
+            <p>Dodaj PDF z tekstem lub włącz OCR dla skanów.</p>
           </div>
           <div>
             <span>02</span>

@@ -23,7 +23,14 @@ export default function Result({ result }: Props) {
       {result.analysis && result.analysis.missingPages.length > 0 && (
         <div className="notice warning" role="status">
           Wynik jest niepełny: bez tekstu na stronach{" "}
-          {result.analysis.missingPages.join(", ")}. OCR nie jest dostępny.
+          {result.analysis.missingPages.join(", ")}. Ich treść została
+          pominięta.
+        </div>
+      )}
+      {!!result.analysis?.ocrPages?.length && (
+        <div className="notice warning" role="status">
+          Strony odczytane przez OCR: {result.analysis.ocrPages.join(", ")}. OCR
+          może popełniać błędy — sprawdź ważne informacje w oryginale.
         </div>
       )}
       <div className="result-grid">
