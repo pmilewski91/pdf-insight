@@ -48,7 +48,7 @@ npm run build --prefix backend && npm run build --prefix frontend
 ## Wdrożenie
 
 1. W AI Studio sprawdź, czy projekt klucza ma **Free Tier**, brak płatnego rozliczenia i czy wybrany model jest dostępny na koncie. Cennik Google na 10.11.2026 pokazuje Free Tier dla `gemini-3.5-flash-lite`; dostępność i limity mogą się zmienić. Nie wpisuj klucza do repozytorium ani czatu.
-2. W Vercel zaimportuj repozytorium i ustaw **Root Directory** na `backend`. W Project Settings → Environment Variables dodaj:
+2. W Vercel zaimportuj repozytorium i ustaw **Root Directory** na `backend`. Plik `backend/vercel.json` wybiera preset Other, polecenie sprawdzające TypeScript i katalog wyjściowy `backend/public`; funkcja znajduje się w `backend/api`. W Project Settings → Environment Variables dodaj:
    - `GEMINI_API_KEY` — sekret z AI Studio;
    - `GEMINI_MODEL` — np. `gemini-3.5-flash-lite`, jeśli jest dostępny w Twoim darmowym planie;
    - `FREE_TIER_CONFIRMED` — `true` dopiero po osobistym sprawdzeniu planu i rozliczeń; to deklaracja administratora, nie automatyczna kontrola Google;

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { resultSchema, type AnalysisResult } from "./schema";
-import { takeProviderCall } from "./limits";
+import { resultSchema, type AnalysisResult } from "./schema.js";
+import { takeProviderCall } from "./limits.js";
 
 export const requestSchema = z
   .object({

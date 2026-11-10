@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import handler from "../api/analyze";
-import { takeProviderCall } from "../lib/limits";
+import handler from "../api/analyze.js";
+import { takeProviderCall } from "../lib/limits.js";
 
-vi.mock("../lib/limits", () => ({ takeProviderCall: vi.fn() }));
+vi.mock("../lib/limits.js", () => ({ takeProviderCall: vi.fn() }));
 const validResult = {
   document: {
     fileName: "test.pdf",

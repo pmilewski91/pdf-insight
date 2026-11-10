@@ -1,4 +1,4 @@
-import { analyze, AnalysisError, requestSchema } from "../lib/analyze";
+import { analyze, AnalysisError, requestSchema } from "../lib/analyze.js";
 
 const maxBytes = 650_000;
 const json = (body: object, status: number, headers: HeadersInit = {}) =>

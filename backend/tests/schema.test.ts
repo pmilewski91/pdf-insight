@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resultSchema } from "../lib/schema";
+import { resultSchema } from "../lib/schema.js";
 
 export const validResult = {
   document: {
