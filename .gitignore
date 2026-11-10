@@ -1,0 +1,12 @@
+.idea/
+*.pdf
+PLAN_PDF_INSIGHT.md
+.env
+.env.*
+!.env.example
+DANE_DLA_AGENTA.md
+node_modules/
+dist/
+coverage/
+.vercel/
+*.tsbuildinfo
